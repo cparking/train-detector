@@ -1,3 +1,7 @@
+1) Pegar Dockerfile en vision_analytics
+2) Clonar este repo en src
+
+
 train-detector
 ==============
 
