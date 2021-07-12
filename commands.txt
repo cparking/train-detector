@@ -1,0 +1,1 @@
+python3 crop_plates.py  --input_dir /srv/openalpr/train-detector-master/Fotos --out_dir /srv/openalpr/train-detector-master/out --plate_width 330 --plate_height 160

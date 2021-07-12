@@ -4,12 +4,12 @@ import os
 import sys
 import json
 import math
-import cv, cv2
+import cv2
 import numpy as np
 import copy
+from numpy.core.numeric import full
 import yaml
 from argparse import ArgumentParser
-
 
 parser = ArgumentParser(description='OpenALPR License Plate Cropper')
 
@@ -29,18 +29,14 @@ parser.add_argument( "--plate_height", dest="plate_height", action="store", type
 
 options = parser.parse_args()
 
-
 if not os.path.isdir(options.input_dir):
-    print "input_dir (%s) doesn't exist"
+    print ("input_dir (%s) doesn't exist")
     sys.exit(1)
-
 
 if not os.path.isdir(options.out_dir):
     os.makedirs(options.out_dir)
 
-
-
-def get_box(x1, y1, x2, y2, x3, y3, x4, y4):
+def get_box(x1, y1, x2, y2, x3, y3, x4, y4, full_image_path):
     height1 = int(round(math.sqrt((x1-x4)*(x1-x4) + (y1-y4)*(y1-y4))))
     height2 = int(round(math.sqrt((x3-x2)*(x3-x2) + (y3-y2)*(y3-y2))))
 
@@ -50,22 +46,16 @@ def get_box(x1, y1, x2, y2, x3, y3, x4, y4):
 
     # add 25% to the height
     height *= options.zoom_out_percent
-    #height += (height * .05)
-
-    #print "Height: %d - %d" % (height1, height2)
-
 
     points = [(x1,y1), (x2,y2), (x3,y3), (x4,y4)]
-    moment = cv.Moments(points)
-    centerx = int(round(moment.m10/moment.m00))
-    centery = int(round(moment.m01/moment.m00))
+
+    moment = cv2.moments(np.float32(points))
+    centerx = int(round(moment["m10"] / moment["m00"]))
+    centery = int(round(moment["m01"] / moment["m00"]))
 
 
     training_aspect = options.plate_width / options.plate_height
     width = int(round(training_aspect * height))
-
-    # top_left = ( int(centerx - (width / 2)), int(centery - (height / 2)))
-    # bottom_right = ( int(centerx + (width / 2)), int(centery + (height / 2)))
 
     top_left_x = int(round(centerx - (width / 2)))
     top_left_y = int(round(centery - (height / 2)))
@@ -73,17 +63,11 @@ def get_box(x1, y1, x2, y2, x3, y3, x4, y4):
     return (top_left_x, top_left_y, width, int(round(height)))
 
 def crop_rect(big_image, x,y,width,height):
-    # Crops the rectangle from the big image and returns a cropped image
-    # Special care is taken to avoid cropping beyond the edge of the image.
-    # It fills this area in with random pixels
 
     (big_height, big_width, channels) = big_image.shape
     if x >= 0 and y >= 0 and (y+height) < big_height and (x+width) < big_width:
         crop_img = img[y:y+height, x:x+width]
     else:
-        #print "Performing partial crop"
-        #print "x: %d  y: %d  width: %d  height: %d" % (x,y,width,height)
-        #print "big_width: %d  big_height: %d" % (big_width, big_height)
         crop_img = np.zeros((height, width, 3), np.uint8)
         cv2.randu(crop_img, (0,0,0), (255,255,255))
 
@@ -104,16 +88,10 @@ def crop_rect(big_image, x,y,width,height):
             offset_y = 0
             height = big_height - y
 
-        #print "offset_x: %d  offset_y: %d, width: %d, height: %d" % (offset_x, offset_y, width, height)
-
         original_crop =  img[y:y+height-1, x:x+width-1]
         (small_image_height, small_image_width, channels) = original_crop.shape
-        #print "Small shape: %dx%d" % (small_image_width, small_image_height)
-        # Draw the small image onto the large image
         crop_img[offset_y:offset_y+small_image_height, offset_x:offset_x+small_image_width] = original_crop
 
-
-    #cv2.imshow("Test", crop_img)
     return crop_img
 
 count = 1
@@ -128,7 +106,7 @@ yaml_files.sort()
 for yaml_file in yaml_files:
 
 
-    print "Processing: " + yaml_file + " (" + str(count) + "/" + str(len(yaml_files)) + ")"
+    print ("Processing: " + yaml_file + " (" + str(count) + "/" + str(len(yaml_files)) + ")")
     count += 1
 
 
@@ -142,25 +120,22 @@ for yaml_file in yaml_files:
     # Skip missing images
     full_image_path = os.path.join(options.input_dir, image)
     if not os.path.isfile(full_image_path):
-        print "Could not find image file %s, skipping" % (full_image_path)
+        print (f"Could not find image file {full_image_path}, skipping")
         continue
-
 
     plate_corners = yaml_obj['plate_corners_gt']
     cc = plate_corners.strip().split()
     for i in range(0, len(cc)):
         cc[i] = int(cc[i])
 
-    box = get_box(cc[0], cc[1], cc[2], cc[3], cc[4], cc[5], cc[6], cc[7])
-
+    box = get_box(cc[0], cc[1], cc[2], cc[3], cc[4], cc[5], cc[6], cc[7], full_image_path)
 
     img = cv2.imread(full_image_path)
     crop = crop_rect(img, box[0], box[1], box[2], box[3])
 
-    # cv2.imshow("test", crop)
-    # cv2.waitKey(0)
+    out_crop_path = os.path.join("/srv/openalpr/train-detector-master/out/", yaml_without_ext + ".jpg")
+    print(f"Ruta output: {out_crop_path}")
+    flag_out = cv2.imwrite(out_crop_path, crop )
+    print(f"Resultado output: {flag_out}")
 
-    out_crop_path = os.path.join(options.out_dir, yaml_without_ext + ".jpg")
-    cv2.imwrite(out_crop_path, crop )
-
-print "%d Cropped images are located in %s" % (count-1, options.out_dir)
+print (f"{count-1} Cropped images are located in {options.out_dir}")
