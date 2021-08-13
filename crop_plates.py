@@ -133,7 +133,7 @@ for yaml_file in yaml_files:
     img = cv2.imread(full_image_path)
     crop = crop_rect(img, box[0], box[1], box[2], box[3])
 
-    out_crop_path = os.path.join("/srv/openalpr/train-detector-master/out/", yaml_without_ext + ".jpg")
+    out_crop_path = options.out_dir + '/' + yaml_file + ".jpg"
     print(f"Ruta output: {out_crop_path}")
     flag_out = cv2.imwrite(out_crop_path, crop )
     print(f"Resultado output: {flag_out}")

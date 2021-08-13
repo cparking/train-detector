@@ -15,7 +15,7 @@ COUNTRY='co'
 OPENCV_DIR= '/usr/bin'
 SAMPLE_CREATOR = OPENCV_DIR + '/opencv_createsamples'
 
-BASE_DIR            = '/srv/openalpr/train-detector-master/'
+BASE_DIR            = '/srv/openalpr/train-detector/'
 
 OUTPUT_DIR          = BASE_DIR + "out/"
 INPUT_NEGATIVE_DIR  = BASE_DIR + 'raw-neg/'
@@ -136,7 +136,7 @@ elif command == "pos":
 elif command == "train":
     print ("TRAIN")
 
-    data_arg = '-data %s/' % (OUTPUT_DIR)
+    data_arg = '-data %s' % (OUTPUT_DIR)
     bg_arg = '-bg %s' % (NEGATIVE_INFO_FILE)
 
     try:
